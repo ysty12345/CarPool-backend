@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    Account, Passenger, Driver, Advertiser, Admin as PlatformAdmin,
+    Account, Passenger, Driver, Advertiser,
     IdentityVerification, Vehicle,
     RideService, DriverService,
     Ride, TripRequest, TripOrder,
@@ -14,9 +14,22 @@ from .models import (
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ('id', 'phone', 'is_passenger', 'is_driver', 'is_advertiser', 'is_admin', 'created_at')
+    list_display = ('id', 'phone', 'is_passenger', 'is_driver', 'is_advertiser',
+                    'is_staff', 'is_superuser', 'created_at')
     search_fields = ('phone',)
-    list_filter = ('is_passenger', 'is_driver', 'is_advertiser', 'is_admin')
+    list_filter = ('is_passenger', 'is_driver', 'is_advertiser', 'is_staff', 'is_superuser')
+
+    fieldsets = (
+        (None, {'fields': ('phone', 'password')}),
+        ('权限设置', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('个人信息', {'fields': ('is_driver', 'is_passenger', 'is_advertiser', 'identity_verification', 'vehicle')}),
+    )
+    readonly_fields = ('password',)  # 将密码字段设为只读
+    add_fieldsets = (
+        (None, {'fields': ('phone', 'password')}),
+        ('权限设置', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('个人信息', {'fields': ('is_driver', 'is_passenger', 'is_advertiser', 'identity_verification', 'vehicle')}),
+    )
 
 
 @admin.register(Passenger)
@@ -35,11 +48,6 @@ class DriverAdmin(admin.ModelAdmin):
 class AdvertiserAdmin(admin.ModelAdmin):
     list_display = ('id', 'account', 'company_name', 'contact_name', 'email', 'created_at')
     search_fields = ('company_name', 'contact_name', 'email')
-
-
-@admin.register(PlatformAdmin)
-class PlatformAdminAdmin(admin.ModelAdmin):
-    list_display = ('id', 'account', 'created_at')
 
 
 @admin.register(IdentityVerification)

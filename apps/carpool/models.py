@@ -1,14 +1,14 @@
 from django.db import models
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
 
 # Create your models here.
-
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 
 # 自定义用户管理器
 class AccountManager(BaseUserManager):
     def create_user(self, phone, password=None, **extra_fields):
+        print("create_user")
         if not phone:
             raise ValueError('手机号必须填写')
         user = self.model(phone=phone, **extra_fields)
@@ -17,12 +17,19 @@ class AccountManager(BaseUserManager):
         return user
 
     def create_superuser(self, phone, password=None, **extra_fields):
-        extra_fields.setdefault('is_admin', True)
+        print("create_superuser")
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        return self.create_user(phone, password, **extra_fields)
+
+    def create_staff(self, phone, password=None, **extra_fields):
+        print("create_staff")
+        extra_fields.setdefault('is_staff', True)
         return self.create_user(phone, password, **extra_fields)
 
 
 # 账号表
-class Account(AbstractBaseUser):
+class Account(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     identity_verification = models.OneToOneField('IdentityVerification', on_delete=models.SET_NULL, null=True,
@@ -32,7 +39,11 @@ class Account(AbstractBaseUser):
     is_passenger = models.BooleanField(default=False)
     is_driver = models.BooleanField(default=False)
     is_advertiser = models.BooleanField(default=False)
-    is_admin = models.BooleanField(default=False)
+
+    # 关键字段：让 Django admin 知道权限
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
 
     USERNAME_FIELD = 'phone'
     objects = AccountManager()
@@ -64,12 +75,6 @@ class Advertiser(models.Model):
     contact_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
     website_url = models.URLField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-# 平台管理员表
-class Admin(models.Model):
-    account = models.OneToOneField(Account, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -217,7 +222,7 @@ class Coupon(models.Model):
     max_discount = models.DecimalField(max_digits=10, decimal_places=2)  # 最大折扣（仅限百分比）
     valid_from = models.DateTimeField()  # 有效期开始
     valid_until = models.DateTimeField()  # 有效期结束
-    created_by = models.ForeignKey(Admin, on_delete=models.CASCADE)  # 创建者（管理员）
+    created_by = models.ForeignKey(Account, on_delete=models.CASCADE)  # 创建者（管理员）
     created_at = models.DateTimeField(auto_now_add=True)  # 创建时间
 
     def __str__(self):
