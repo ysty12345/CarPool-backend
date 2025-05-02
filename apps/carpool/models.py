@@ -63,6 +63,8 @@ class Passenger(models.Model):
 # 司机表
 class Driver(models.Model):
     account = models.OneToOneField(Account, on_delete=models.CASCADE)
+    # status = models.CharField(max_length=20,
+    #                           choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')])
     rating = models.DecimalField(max_digits=2, decimal_places=1)
     created_at = models.DateTimeField(auto_now_add=True)
     services = models.ManyToManyField('RideService', through='DriverService')
@@ -71,6 +73,8 @@ class Driver(models.Model):
 # 广告商表
 class Advertiser(models.Model):
     account = models.OneToOneField(Account, on_delete=models.CASCADE)
+    # status = models.CharField(max_length=20,
+    #                           choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')])
     company_name = models.CharField(max_length=100)
     contact_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)

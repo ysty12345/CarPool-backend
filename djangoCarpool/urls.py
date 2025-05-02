@@ -15,10 +15,42 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from apps.carpool import views
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+from apps.carpool.views import (
+    RegisterView,
+    PassengerCreateView,
+    PassengerInfoView,
+    DriverCreateView,
+    DriverInfoView,
+    AdvertiserCreateView,
+    AdvertiserInfoView, LoginView, IdentityVerificationView, VehicleView
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/', views.auth),
-    path('index/', views.UserView.as_view()),
+
+    # 注册和登录相关接口
+    path('api/register/', RegisterView.as_view(), name='register'),
+    path('api/login/', LoginView.as_view(), name='login'),
+
+    # JWT Token 相关接口
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # 乘客相关接口
+    path('api/passenger/create/', PassengerCreateView.as_view(), name='passenger-create'),
+    path('api/passenger/info/', PassengerInfoView.as_view(), name='passenger-info'),
+
+    # 司机相关接口
+    path('api/driver/create/', DriverCreateView.as_view(), name='driver-create'),
+    path('api/driver/info/', DriverInfoView.as_view(), name='driver-info'),
+    path('api/identity/', IdentityVerificationView.as_view(), name='identity-verification'),
+    path('api/vehicle/', VehicleView.as_view(), name='vehicle'),
+
+    # 广告商相关接口
+    path('api/advertiser/create/', AdvertiserCreateView.as_view(), name='advertiser-create'),
+    path('api/advertiser/info/', AdvertiserInfoView.as_view(), name='advertiser-info'),
 ]
