@@ -63,8 +63,6 @@ class Passenger(models.Model):
 # 司机表
 class Driver(models.Model):
     account = models.OneToOneField(Account, on_delete=models.CASCADE)
-    # status = models.CharField(max_length=20,
-    #                           choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')])
     rating = models.DecimalField(max_digits=2, decimal_places=1)
     created_at = models.DateTimeField(auto_now_add=True)
     services = models.ManyToManyField('RideService', through='DriverService')
@@ -73,8 +71,9 @@ class Driver(models.Model):
 # 广告商表
 class Advertiser(models.Model):
     account = models.OneToOneField(Account, on_delete=models.CASCADE)
-    # status = models.CharField(max_length=20,
-    #                           choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')])
+    status = models.CharField(max_length=20,
+                              choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')],
+                              default='pending')
     company_name = models.CharField(max_length=100)
     contact_name = models.CharField(max_length=50)
     email = models.EmailField(unique=True)
@@ -90,6 +89,9 @@ class IdentityVerification(models.Model):
     license_issue_date = models.DateField(null=True, blank=True)
     license_expiry = models.DateField(null=True, blank=True)
     driverlicense_file_url = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20,
+                              choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')],
+                              default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     last_modified_at = models.DateTimeField(auto_now=True)
 
@@ -102,6 +104,9 @@ class Vehicle(models.Model):
     plate_number = models.CharField(max_length=20, unique=True)
     seats = models.IntegerField()
     registration_doc_url = models.CharField(max_length=255)
+    status = models.CharField(max_length=20,
+                              choices=[('pending', '待审核'), ('approved', '已通过'), ('rejected', '已拒绝')],
+                              default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
 
 

@@ -38,27 +38,17 @@ class PassengerSerializer(serializers.ModelSerializer):
         fields = ['nickname', 'rating', 'created_at']
 
 
-# 司机序列化器
-class DriverSerializer(serializers.ModelSerializer):
-    services = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Driver
-        fields = ['rating', 'created_at', 'services']
-
-    def get_services(self, obj):
-        return [service.name for service in obj.services.all()]
-
-
 # 广告商序列化器
 class AdvertiserSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(read_only=True)
     class Meta:
         model = Advertiser
-        fields = ['company_name', 'contact_name', 'email', 'website_url', 'created_at']
+        fields = "__all__"
 
 
 # 身份验证序列化器
 class IdentityVerificationSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(read_only=True)
     class Meta:
         model = IdentityVerification
         fields = '__all__'
@@ -77,6 +67,7 @@ class IdentityVerificationSerializer(serializers.ModelSerializer):
 
 # 车辆序列化器
 class VehicleSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(read_only=True)
     class Meta:
         model = Vehicle
         fields = '__all__'
@@ -86,3 +77,17 @@ class VehicleSerializer(serializers.ModelSerializer):
         if not re.match(r'^[京沪粤苏浙鲁晋冀津渝川鄂湘皖赣闽陕甘宁蒙新青藏桂云贵黑吉辽]{1}[A-Z]{1}[A-Z0-9]{5}$', value):
             raise serializers.ValidationError("车牌号格式不正确")
         return value
+
+
+# 司机序列化器
+class DriverSerializer(serializers.ModelSerializer):
+    identity_verification = IdentityVerificationSerializer(source='account.identity_verification', read_only=True)
+    vehicle = VehicleSerializer(source='account.vehicle', read_only=True)
+    services = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Driver
+        fields = ['id', 'rating', 'created_at', 'services', 'identity_verification', 'vehicle']
+
+    def get_services(self, obj):
+        return [service.name for service in obj.services.all()]
