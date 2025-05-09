@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'apps.carpool.apps.CarpoolConfig',
 ]
 
@@ -136,6 +137,9 @@ AUTH_USER_MODEL = 'carpool.Account'
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ['rest_framework_simplejwt.authentication.JWTAuthentication',
                                        'ext.auth.MyAuthentication'],
+    "DEFAULT_PERMISSION_CLASSES": [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 from datetime import timedelta

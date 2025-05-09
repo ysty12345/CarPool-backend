@@ -218,6 +218,9 @@ class Review(models.Model):
     def __str__(self):
         return f"Review for Order {self.order_id} - {self.rating} stars"
 
+    class Meta:
+        unique_together = ('order', 'reviewer')
+
 
 # 优惠券表
 class Coupon(models.Model):

@@ -20,13 +20,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from apps.carpool.views import (
-    RegisterView,
-    PassengerCreateView,
-    PassengerInfoView,
-    DriverCreateView,
-    DriverInfoView,
-    AdvertiserCreateView,
-    AdvertiserInfoView, LoginView, IdentityVerificationView, VehicleView
+    RegisterView, LoginView,
+    PassengerCreateView, PassengerInfoView,
+    DriverCreateView, DriverInfoView,
+    AdvertiserCreateView, AdvertiserInfoView,
+    IdentityVerificationView, VehicleView,
+    SubmitTripRequestAPIView, TripRequestStatusAPIView, CancelTripRequestAPIView,
+    PassengerOrderHistoryAPIView, SubmitDriverReviewAPIView, PassengerCouponsAPIView, ReceiveCouponAPIView
 )
 
 urlpatterns = [
@@ -53,4 +53,13 @@ urlpatterns = [
     # 广告商相关接口
     path('api/advertiser/create/', AdvertiserCreateView.as_view(), name='advertiser-create'),
     path('api/advertiser/info/', AdvertiserInfoView.as_view(), name='advertiser-info'),
+
+    # 乘客功能接口
+    path('api/passenger/trip/request/', SubmitTripRequestAPIView.as_view(), name='submit-trip-request'),
+    path('api/passenger/trip/status/', TripRequestStatusAPIView.as_view(), name='trip-request-status'),
+    path('api/passenger/trip/cancel/<int:pk>/', CancelTripRequestAPIView.as_view(), name='cancel-trip-request'),
+    path('api/passenger/orders/', PassengerOrderHistoryAPIView.as_view(), name='passenger-orders'),
+    path('api/passenger/review/', SubmitDriverReviewAPIView.as_view(), name='submit-driver-review'),
+    path('api/passenger/coupons/', PassengerCouponsAPIView.as_view(), name='passenger-coupons'),
+    path('api/passenger/coupons/receive/<int:coupon_id>/', ReceiveCouponAPIView.as_view(), name='receive-coupon'),
 ]

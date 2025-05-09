@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.core.validators import RegexValidator, EmailValidator
 from .models import (
-    Account, Passenger, Driver, Advertiser, IdentityVerification, Vehicle
+    Account, Passenger, Driver, Advertiser, IdentityVerification, Vehicle, TripRequest, TripOrder, Review, Coupon,
+    UserCoupon
 )
 
 
@@ -41,17 +42,21 @@ class PassengerSerializer(serializers.ModelSerializer):
 # 广告商序列化器
 class AdvertiserSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
+
     class Meta:
         model = Advertiser
         fields = "__all__"
+        readonly_fields = ['account', 'status', 'created_at']
 
 
 # 身份验证序列化器
 class IdentityVerificationSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
+
     class Meta:
         model = IdentityVerification
         fields = '__all__'
+        read_only_fields = ['status', 'created_at', 'last_modified']
 
     def validate_idnumber(self, value):
         import re
@@ -68,9 +73,11 @@ class IdentityVerificationSerializer(serializers.ModelSerializer):
 # 车辆序列化器
 class VehicleSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
+
     class Meta:
         model = Vehicle
         fields = '__all__'
+        read_only_fields = ['status', 'created_at']
 
     def validate_plate_number(self, value):
         import re
@@ -87,7 +94,74 @@ class DriverSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Driver
-        fields = ['id', 'rating', 'created_at', 'services', 'identity_verification', 'vehicle']
+        fields = ['rating', 'created_at', 'services', 'identity_verification', 'vehicle']
 
     def get_services(self, obj):
         return [service.name for service in obj.services.all()]
+
+
+# 乘客功能相关序列化器
+class TripRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TripRequest
+        fields = '__all__'
+        read_only_fields = ['account', 'status', 'request_time', 'estimated_price']
+
+    def create(self, validated_data):
+        validated_data['status'] = 'pending'
+        from django.utils import timezone
+        validated_data['request_time'] = timezone.now()
+        return super().create(validated_data)
+
+    def validate_trip_type(self, value):
+        if value not in dict(TripRequest.TRIP_TYPE_CHOICES):
+            raise serializers.ValidationError("无效的出行类型")
+        return value
+
+    def validate(self, data):
+        if data.get('seats_needed', 1) <= 0:
+            raise serializers.ValidationError({'seats_needed': '乘客数量必须大于0'})
+        return data
+
+
+class TripOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TripOrder
+        fields = '__all__'
+        readonly_fields = ['trip_request', 'driver', 'payment_status', 'created_at']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = "__all__"
+        read_only_fields = ['created_at', 'reviewer']
+
+    def validate(self, data):
+        user = self.context['request'].user
+        order = data['order']
+
+        if order.passenger != user and order.driver != user:
+            raise serializers.ValidationError("你无权评价这个订单。")
+
+        if Review.objects.filter(order=order, reviewer=user).exists():
+            raise serializers.ValidationError("你已经评价过这个订单了。")
+
+        if user == data['reviewee']:
+            raise serializers.ValidationError("不能评价自己。")
+
+        return data
+
+
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Coupon
+        fields = '__all__'
+
+
+class UserCouponSerializer(serializers.ModelSerializer):
+    coupon = CouponSerializer(read_only=True)
+
+    class Meta:
+        model = UserCoupon
+        fields = ['coupon', 'acquired_at', 'used_at', 'status']
