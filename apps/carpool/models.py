@@ -224,7 +224,7 @@ class Review(models.Model):
 
 # 优惠券表
 class Coupon(models.Model):
-    DISCOUNT_TYPE_CHOICES = [('fixed', 'Fixed Amount'), ('percentage', 'Percentage')]
+    DISCOUNT_TYPE_CHOICES = [('fixed amount', 'Fixed Amount'), ('percentage', 'Percentage')]
 
     name = models.CharField(max_length=100)  # 名称
     description = models.TextField()  # 描述

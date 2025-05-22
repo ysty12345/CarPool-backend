@@ -26,7 +26,8 @@ from apps.carpool.views import (
     AdvertiserCreateView, AdvertiserInfoView,
     IdentityVerificationView, VehicleView,
     SubmitTripRequestAPIView, TripRequestStatusAPIView, CancelTripRequestAPIView,
-    PassengerOrderHistoryAPIView, SubmitDriverReviewAPIView, PassengerCouponsAPIView, ReceiveCouponAPIView
+    PassengerOrderHistoryAPIView, SubmitDriverReviewAPIView, PassengerCouponsAPIView, ReceiveCouponAPIView,
+    CreateTripView, MyTripsView, AcceptTripRequestView, TripPassengersView, DriverProfileView, RatePassengerView
 )
 
 urlpatterns = [
@@ -62,4 +63,12 @@ urlpatterns = [
     path('api/passenger/review/', SubmitDriverReviewAPIView.as_view(), name='submit-driver-review'),
     path('api/passenger/coupons/', PassengerCouponsAPIView.as_view(), name='passenger-coupons'),
     path('api/passenger/coupons/receive/<int:coupon_id>/', ReceiveCouponAPIView.as_view(), name='receive-coupon'),
+
+    # 司机功能接口
+    path('api/driver/trips/create/', CreateTripView.as_view(), name='driver-create-trip'),
+    path('api/driver/trips/', MyTripsView.as_view(), name='driver-my-trips'),
+    path('api/driver/trips/accept/', AcceptTripRequestView.as_view(), name='driver-accept-trip-request'),
+    path('api/driver/trips/<int:trip_id>/passengers/', TripPassengersView.as_view(), name='trip-passenger-list'),
+    path('api/driver/profile/', DriverProfileView.as_view(), name='driver-profile'),
+    path('api/driver/reviews/', RatePassengerView.as_view(), name='rate-passenger'),
 ]

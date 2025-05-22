@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.core.validators import RegexValidator, EmailValidator
 from .models import (
     Account, Passenger, Driver, Advertiser, IdentityVerification, Vehicle, TripRequest, TripOrder, Review, Coupon,
-    UserCoupon
+    UserCoupon, Ride
 )
 
 
@@ -100,7 +100,10 @@ class DriverSerializer(serializers.ModelSerializer):
         return [service.name for service in obj.services.all()]
 
 
+##########################################################
 # 乘客功能相关序列化器
+
+# 乘客打车请求序列化器
 class TripRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = TripRequest
@@ -124,6 +127,7 @@ class TripRequestSerializer(serializers.ModelSerializer):
         return data
 
 
+# 乘客行程订单序列化器
 class TripOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = TripOrder
@@ -131,6 +135,7 @@ class TripOrderSerializer(serializers.ModelSerializer):
         readonly_fields = ['trip_request', 'driver', 'payment_status', 'created_at']
 
 
+# 乘客评价序列化器
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
@@ -153,15 +158,43 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
 
+# 优惠券序列化器
 class CouponSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coupon
         fields = '__all__'
 
 
+# 乘客优惠券领取记录序列化器
 class UserCouponSerializer(serializers.ModelSerializer):
     coupon = CouponSerializer(read_only=True)
 
     class Meta:
         model = UserCoupon
         fields = ['coupon', 'acquired_at', 'used_at', 'status']
+
+
+##########################################################
+# 司机功能相关序列化器
+
+# 司机行程序列化器
+class TripSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ride
+        fields = '__all__'
+        read_only_fields = ['driver', 'created_at']
+
+
+# 司机接单请求序列化器
+class AcceptTripRequestSerializer(serializers.Serializer):
+    request_id = serializers.IntegerField()
+
+
+# 司机评价序列化器
+class ReviewPassengerSerializer(serializers.ModelSerializer):
+    reviewer = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Review
+        fields = ['id', 'rating', 'comment', 'created_at', 'order', 'reviewer', 'reviewee']
+        read_only_fields = ['created_at']

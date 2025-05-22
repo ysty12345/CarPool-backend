@@ -1,4 +1,4 @@
-from datetime import datetime
+from django.utils import timezone
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,10 +7,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 
 from ext.permissions import IsPassenger, IsDriver, IsAdvertiser
-from .models import Passenger, Driver, Advertiser, TripRequest, TripOrder, UserCoupon, Coupon
+from .models import Passenger, Driver, Advertiser, TripRequest, TripOrder, UserCoupon, Coupon, Ride
 from .serializers import RegisterSerializer, PassengerSerializer, DriverSerializer, AdvertiserSerializer, \
     IdentityVerificationSerializer, VehicleSerializer, TripRequestSerializer, TripOrderSerializer, ReviewSerializer, \
-    UserCouponSerializer, CouponSerializer
+    UserCouponSerializer, CouponSerializer, TripSerializer
 
 
 # Create your views here.
@@ -58,6 +58,7 @@ class LoginView(APIView):
             return Response({"error": "用户名或密码错误"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+##########################################################
 # 乘客基本视图
 class PassengerCreateView(APIView):
 
@@ -138,6 +139,7 @@ class DriverInfoView(APIView):
             return Response({"detail": "司机信息不存在"}, status=404)
 
 
+##########################################################
 # 广告商基本视图
 class AdvertiserCreateView(APIView):
 
@@ -237,6 +239,7 @@ class VehicleView(APIView):
         return Response(serializer.errors, status=400)
 
 
+##########################################################
 # 乘客功能视图
 
 # 提交打车请求
@@ -246,7 +249,7 @@ class SubmitTripRequestAPIView(APIView):
     def post(self, request):
         serializer = TripRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(account=request.user, request_time=datetime.now())
+            serializer.save(account=request.user, request_time=timezone.now())
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -305,7 +308,9 @@ class PassengerCouponsAPIView(APIView):
 
     def get(self, request):
         user_coupons = UserCoupon.objects.filter(account=request.user)
-        active_platform_coupons = Coupon.objects.filter(valid_until__gte=datetime.now())
+        now = timezone.now()
+        active_platform_coupons = Coupon.objects.filter(valid_from__lte=now,
+                                                        valid_until__gte=now)
         user_serializer = UserCouponSerializer(user_coupons, many=True)
         coupon_serializer = CouponSerializer(active_platform_coupons, many=True)
         return Response({
@@ -321,7 +326,120 @@ class ReceiveCouponAPIView(APIView):
     def post(self, request, coupon_id):
         try:
             coupon = Coupon.objects.get(id=coupon_id)
-            UserCoupon.objects.create(account=request.user, coupon=coupon, acquired_at=datetime.now(), status='active')
+            UserCoupon.objects.create(account=request.user, coupon=coupon, acquired_at=timezone.now(), status='active')
             return Response({'detail': '领取成功'})
         except Coupon.DoesNotExist:
             return Response({'detail': '优惠券不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+
+##########################################################
+# 司机功能视图
+
+# 发布行程
+class CreateTripView(generics.CreateAPIView):
+    serializer_class = TripSerializer
+    permission_classes = [IsDriver]
+
+    def perform_create(self, serializer):
+        serializer.save(driver=self.request.user, created_at=timezone.now())
+
+
+# 查看自己发布的行程及状态
+class MyTripsView(generics.ListAPIView):
+    serializer_class = TripDetailSerializer
+    permission_classes = [IsDriver]
+
+    def get_queryset(self):
+        return Ride.objects.filter(driver=self.request.user).order_by('-departure_time')
+
+
+# 响应乘客请求 / 接单
+class AcceptTripRequestView(APIView):
+    permission_classes = [IsDriver]
+
+    def post(self, request, request_id):
+        try:
+            trip_request = TripRequest.objects.get(id=request_id, status='pending')
+        except TripRequest.DoesNotExist:
+            return Response({"detail": "请求不存在或已处理"}, status=404)
+
+        trip_request.status = 'matched'
+        trip_request.save()
+
+        # 创建对应 Trip 实例（简化逻辑）
+        Ride.objects.create(
+            driver=request.user,
+            passenger=trip_request.account,
+            pickup_location=trip_request.pickup_location,
+            dropoff_location=trip_request.dropoff_location,
+            departure_time=trip_request.scheduled_time or timezone.now(),
+            seats=trip_request.seats_needed,
+            pets=trip_request.pets_needed,
+            status='matched'
+        )
+
+        return Response({"detail": "已接单"})
+
+
+# 查看行程中乘客
+class TripPassengersView(APIView):
+    permission_classes = [IsDriver]
+
+    def get(self, request, trip_id):
+        try:
+            trip = Trip.objects.get(id=trip_id, driver=request.user)
+        except Trip.DoesNotExist:
+            return Response({"detail": "行程不存在"}, status=404)
+
+        passenger_data = {
+            "passenger": trip.passenger.phone,
+            "pickup_address": trip.pickup_address,
+            "dropoff_address": trip.dropoff_address
+        }
+        return Response(passenger_data)
+
+
+# 上传或查看身份认证和车辆资料
+class DriverProfileView(APIView):
+    permission_classes = [IsDriver]
+
+    def get(self, request):
+        identity_data = IdentityVerificationSerializer(request.user.identity_verification).data if request.user.identity_verification else None
+        vehicle_data = VehicleSerializer(request.user.vehicle).data if request.user.vehicle else None
+        return Response({
+            "identity_verification": identity_data,
+            "vehicle": vehicle_data
+        })
+
+    def post(self, request):
+        identity_serializer = IdentityVerificationSerializer(data=request.data.get('identity'))
+        vehicle_serializer = VehicleSerializer(data=request.data.get('vehicle'))
+
+        if identity_serializer.is_valid() and vehicle_serializer.is_valid():
+            identity = identity_serializer.save()
+            vehicle = vehicle_serializer.save()
+            request.user.identity_verification = identity
+            request.user.vehicle = vehicle
+            request.user.save()
+            return Response({"detail": "上传成功"})
+        return Response({
+            "identity_errors": identity_serializer.errors,
+            "vehicle_errors": vehicle_serializer.errors
+        }, status=400)
+
+
+# 评价乘客
+class RatePassengerView(generics.CreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsDriver]
+
+    def perform_create(self, serializer):
+        order = serializer.validated_data['order']
+        if order.driver != self.request.user:
+            raise PermissionError("不能评价非你订单中的乘客")
+        serializer.save(
+            reviewer=self.request.user,
+            reviewee=order.passenger,
+            created_at=timezone.now()
+        )
+
