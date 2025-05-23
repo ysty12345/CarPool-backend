@@ -2,7 +2,7 @@ from django.utils import timezone
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 
@@ -341,16 +341,32 @@ class CreateTripView(generics.CreateAPIView):
     permission_classes = [IsDriver]
 
     def perform_create(self, serializer):
-        serializer.save(driver=self.request.user, created_at=timezone.now())
+        serializer.save(account=self.request.user)
 
 
-# 查看自己发布的行程及状态
+# 查看行程
 class MyTripsView(generics.ListAPIView):
-    serializer_class = TripDetailSerializer
+    serializer_class = TripSerializer
     permission_classes = [IsDriver]
 
     def get_queryset(self):
-        return Ride.objects.filter(driver=self.request.user).order_by('-departure_time')
+        return Ride.objects.filter(account=self.request.user).order_by('-departure_time')
+
+
+# 取消行程
+class CancelRideView(APIView):
+    permission_classes = [IsDriver]
+
+    def post(self, request, pk):
+        try:
+            ride = Ride.objects.get(pk=pk, account=request.user)
+            if ride.status not in ['completed', 'canceled']:
+                ride.status = 'canceled'
+                ride.save()
+                return Response({"detail": "Ride canceled."}, status=status.HTTP_200_OK)
+            return Response({"detail": "Ride cannot be canceled."}, status=status.HTTP_400_BAD_REQUEST)
+        except Ride.DoesNotExist:
+            return Response({"detail": "Ride not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 # 响应乘客请求 / 接单
@@ -360,14 +376,16 @@ class AcceptTripRequestView(APIView):
     def post(self, request, request_id):
         try:
             trip_request = TripRequest.objects.get(id=request_id, status='pending')
+            if trip_request.trip_type != '打车':
+                return Response({"detail": "只能接打车请求"}, status=400)
         except TripRequest.DoesNotExist:
             return Response({"detail": "请求不存在或已处理"}, status=404)
 
         trip_request.status = 'matched'
         trip_request.save()
 
-        # 创建对应 Trip 实例（简化逻辑）
-        Ride.objects.create(
+        # 创建对应 TripOrder 实例
+        TripOrder.objects.create(
             driver=request.user,
             passenger=trip_request.account,
             pickup_location=trip_request.pickup_location,
@@ -381,14 +399,14 @@ class AcceptTripRequestView(APIView):
         return Response({"detail": "已接单"})
 
 
-# 查看行程中乘客
+# 查看乘客
 class TripPassengersView(APIView):
     permission_classes = [IsDriver]
 
     def get(self, request, trip_id):
         try:
-            trip = Trip.objects.get(id=trip_id, driver=request.user)
-        except Trip.DoesNotExist:
+            trip = TripOrder.objects.get(id=trip_id, driver=request.user)
+        except TripOrder.DoesNotExist:
             return Response({"detail": "行程不存在"}, status=404)
 
         passenger_data = {
@@ -435,8 +453,6 @@ class RatePassengerView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         order = serializer.validated_data['order']
-        if order.driver != self.request.user:
-            raise PermissionError("不能评价非你订单中的乘客")
         serializer.save(
             reviewer=self.request.user,
             reviewee=order.passenger,

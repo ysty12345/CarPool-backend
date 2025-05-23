@@ -182,7 +182,7 @@ class TripSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ride
         fields = '__all__'
-        read_only_fields = ['driver', 'created_at']
+        read_only_fields = ['account', 'status']
 
 
 # 司机接单请求序列化器
