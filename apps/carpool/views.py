@@ -243,7 +243,7 @@ class VehicleView(APIView):
 # 乘客功能视图
 
 # 提交打车请求
-class SubmitTripRequestAPIView(APIView):
+class SubmitTripRequestView(APIView):
     permission_classes = [IsPassenger]
 
     def post(self, request):
@@ -255,7 +255,7 @@ class SubmitTripRequestAPIView(APIView):
 
 
 # 查看打车请求状态
-class TripRequestStatusAPIView(APIView):
+class TripRequestStatusView(APIView):
     permission_classes = [IsPassenger]
 
     def get(self, request):
@@ -265,7 +265,7 @@ class TripRequestStatusAPIView(APIView):
 
 
 # 取消打车请求
-class CancelTripRequestAPIView(APIView):
+class CancelTripRequestView(APIView):
     permission_classes = [IsPassenger]
 
     def post(self, request, pk):
@@ -281,7 +281,7 @@ class CancelTripRequestAPIView(APIView):
 
 
 # 查看历史订单
-class PassengerOrderHistoryAPIView(APIView):
+class PassengerOrderHistoryView(APIView):
     permission_classes = [IsPassenger]
 
     def get(self, request):
@@ -291,7 +291,7 @@ class PassengerOrderHistoryAPIView(APIView):
 
 
 # 评价司机
-class SubmitDriverReviewAPIView(APIView):
+class SubmitDriverReviewView(APIView):
     permission_classes = [IsPassenger]
 
     def post(self, request):
@@ -303,7 +303,7 @@ class SubmitDriverReviewAPIView(APIView):
 
 
 # 获取优惠券列表
-class PassengerCouponsAPIView(APIView):
+class PassengerCouponsView(APIView):
     permission_classes = [IsPassenger]
 
     def get(self, request):
@@ -320,7 +320,7 @@ class PassengerCouponsAPIView(APIView):
 
 
 # 领取优惠券
-class ReceiveCouponAPIView(APIView):
+class ReceiveCouponView(APIView):
     permission_classes = [IsPassenger]
 
     def post(self, request, coupon_id):
@@ -424,6 +424,16 @@ class TripPassengersView(APIView):
             "dropoff_address": trip.trip_request.dropoff_address
         }
         return Response(passenger_data)
+
+
+# 查看历史订单
+class DriverOrderHistoryView(APIView):
+    permission_classes = [IsDriver]
+
+    def get(self, request):
+        orders = TripOrder.objects.filter(driver__account=request.user)
+        serializer = TripOrderSerializer(orders, many=True)
+        return Response(serializer.data)
 
 
 # 评价乘客

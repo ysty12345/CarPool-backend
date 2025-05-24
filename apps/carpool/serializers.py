@@ -46,7 +46,7 @@ class AdvertiserSerializer(serializers.ModelSerializer):
     class Meta:
         model = Advertiser
         fields = "__all__"
-        readonly_fields = ['account', 'status', 'created_at']
+        read_only_fields = ['account', 'status', 'created_at']
 
 
 # 身份验证序列化器
@@ -132,7 +132,7 @@ class TripOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = TripOrder
         fields = '__all__'
-        readonly_fields = ['trip_request', 'driver', 'payment_status', 'created_at']
+        read_only_fields = ['trip_request', 'driver', 'payment_status', 'created_at']
 
 
 # 乘客评价序列化器
