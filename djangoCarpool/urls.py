@@ -27,8 +27,8 @@ from apps.carpool.views import (
     IdentityVerificationView, VehicleView,
     SubmitTripRequestAPIView, TripRequestStatusAPIView, CancelTripRequestAPIView,
     PassengerOrderHistoryAPIView, SubmitDriverReviewAPIView, PassengerCouponsAPIView, ReceiveCouponAPIView,
-    CreateTripView, MyTripsView, AcceptTripRequestView, TripPassengersView, DriverProfileView, RatePassengerView,
-    CancelRideView
+    CreateTripView, MyTripsView, AcceptTripRequestView, TripPassengersView, RatePassengerView,
+    CancelRideView, ListPendingTripRequestsView
 )
 
 urlpatterns = [
@@ -69,8 +69,8 @@ urlpatterns = [
     path('api/driver/ride/create/', CreateTripView.as_view(), name='driver-create-trip'),
     path('api/driver/ride/', MyTripsView.as_view(), name='driver-my-trips'),
     path('api/driver/ride/<int:pk>/cancel/', CancelRideView.as_view(), name='driver-ride-cancel'),
+    path('api/driver/trip/requests/', ListPendingTripRequestsView.as_view(), name='list-pending-trip-requests'),
     path('api/driver/trip/<int:request_id>/accept/', AcceptTripRequestView.as_view(), name='driver-accept-trip-request'),
     path('api/driver/trip/<int:trip_id>/passengers/', TripPassengersView.as_view(), name='trip-passenger-list'),
-    path('api/driver/profile/', DriverProfileView.as_view(), name='driver-profile'),
-    path('api/driver/reviews/', RatePassengerView.as_view(), name='rate-passenger'),
+    path('api/driver/review/', RatePassengerView.as_view(), name='rate-passenger'),
 ]

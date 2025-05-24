@@ -369,6 +369,17 @@ class CancelRideView(APIView):
             return Response({"detail": "Ride not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
+# 查看待处理的打车请求
+class ListPendingTripRequestsView(APIView):
+    permission_classes = [IsDriver]
+
+    def get(self, request):
+        # 只返回状态为 pending 且类型为“打车”的请求
+        requests = TripRequest.objects.filter(status='pending', trip_type='打车').order_by('-request_time')
+        serializer = TripRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+
+
 # 响应乘客请求 / 接单
 class AcceptTripRequestView(APIView):
     permission_classes = [IsDriver]
@@ -381,20 +392,15 @@ class AcceptTripRequestView(APIView):
         except TripRequest.DoesNotExist:
             return Response({"detail": "请求不存在或已处理"}, status=404)
 
-        trip_request.status = 'matched'
-        trip_request.save()
-
+        driver = Driver.objects.get(account=request.user)
         # 创建对应 TripOrder 实例
         TripOrder.objects.create(
-            driver=request.user,
-            passenger=trip_request.account,
-            pickup_location=trip_request.pickup_location,
-            dropoff_location=trip_request.dropoff_location,
-            departure_time=trip_request.scheduled_time or timezone.now(),
-            seats=trip_request.seats_needed,
-            pets=trip_request.pets_needed,
-            status='matched'
+            trip_request=trip_request,
+            driver=driver,
         )
+
+        trip_request.status = 'matched'
+        trip_request.save()
 
         return Response({"detail": "已接单"})
 
@@ -405,45 +411,19 @@ class TripPassengersView(APIView):
 
     def get(self, request, trip_id):
         try:
-            trip = TripOrder.objects.get(id=trip_id, driver=request.user)
+            trip = TripOrder.objects.get(trip_request=trip_id, driver__account=request.user)
         except TripOrder.DoesNotExist:
             return Response({"detail": "行程不存在"}, status=404)
 
+        passenger = Passenger.objects.get(account=trip.trip_request.account)
         passenger_data = {
-            "passenger": trip.passenger.phone,
-            "pickup_address": trip.pickup_address,
-            "dropoff_address": trip.dropoff_address
+            "nickname": passenger.nickname,
+            "phone": trip.trip_request.account.phone,
+            "pickup_time": trip.trip_request.request_time,
+            "pickup_address": trip.trip_request.pickup_address,
+            "dropoff_address": trip.trip_request.dropoff_address
         }
         return Response(passenger_data)
-
-
-# 上传或查看身份认证和车辆资料
-class DriverProfileView(APIView):
-    permission_classes = [IsDriver]
-
-    def get(self, request):
-        identity_data = IdentityVerificationSerializer(request.user.identity_verification).data if request.user.identity_verification else None
-        vehicle_data = VehicleSerializer(request.user.vehicle).data if request.user.vehicle else None
-        return Response({
-            "identity_verification": identity_data,
-            "vehicle": vehicle_data
-        })
-
-    def post(self, request):
-        identity_serializer = IdentityVerificationSerializer(data=request.data.get('identity'))
-        vehicle_serializer = VehicleSerializer(data=request.data.get('vehicle'))
-
-        if identity_serializer.is_valid() and vehicle_serializer.is_valid():
-            identity = identity_serializer.save()
-            vehicle = vehicle_serializer.save()
-            request.user.identity_verification = identity
-            request.user.vehicle = vehicle
-            request.user.save()
-            return Response({"detail": "上传成功"})
-        return Response({
-            "identity_errors": identity_serializer.errors,
-            "vehicle_errors": vehicle_serializer.errors
-        }, status=400)
 
 
 # 评价乘客

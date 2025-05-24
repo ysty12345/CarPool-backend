@@ -177,12 +177,12 @@ class TripOrder(models.Model):
     ]
     trip_request = models.ForeignKey(TripRequest, on_delete=models.CASCADE)  # 对应的打车请求
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)  # 对应的司机
-    actual_price = models.DecimalField(max_digits=10, decimal_places=2)  # 实际支付金额
+    actual_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)  # 实际支付金额
     user_coupon = models.ForeignKey('UserCoupon', on_delete=models.SET_NULL, null=True, blank=True)  # 使用的优惠券（可为空）
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # 折扣金额（可为空）
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES)  # 支付状态
-    start_time = models.DateTimeField()  # 出发时间
-    end_time = models.DateTimeField()  # 到达时间
+    start_time = models.DateTimeField(null=True)  # 出发时间
+    end_time = models.DateTimeField(null=True)  # 到达时间
     route = models.JSONField(null=True, blank=True)  # 行驶路线（GeoJSON 格式或坐标序列）
 
     # 用户与司机的评分、评价
