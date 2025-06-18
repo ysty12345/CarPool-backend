@@ -139,7 +139,8 @@ class Ride(models.Model):
     start_location = models.CharField(max_length=255)
     end_location = models.CharField(max_length=255)
     departure_time = models.DateTimeField()
-    available_seats = models.IntegerField()
+    total_seats = models.IntegerField()  # 总座位数
+    available_seats = models.IntegerField()  # 目前可用座位数
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
 
 

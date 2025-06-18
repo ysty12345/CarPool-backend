@@ -122,8 +122,13 @@ class TripRequestSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        if data.get('seats_needed', 1) <= 0:
+        if data.get('seats_needed', -1) <= 0:
             raise serializers.ValidationError({'seats_needed': '乘客数量必须大于0'})
+        if data.get('trip_type') == '拼车':
+            try:
+                data.get('scheduled_time')
+            except KeyError:
+                raise serializers.ValidationError({'scheduled_time': '拼车请求必须指定预约时间'})
         return data
 
 
@@ -200,6 +205,13 @@ class TripSerializer(serializers.ModelSerializer):
         model = Ride
         fields = '__all__'
         read_only_fields = ['account', 'status']
+
+    def validate(self, data):
+        if data.get('total_seats', -1) <= 0:
+            raise serializers.ValidationError({'available_seats': '可用座位数必须大于0'})
+        data['status'] = 'open'
+        data.available_seats = data.get('total_seats', 0)
+        return data
 
 
 # 司机接单请求序列化器

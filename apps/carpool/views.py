@@ -370,7 +370,8 @@ class CancelRideView(APIView):
     def post(self, request, pk):
         try:
             ride = Ride.objects.get(pk=pk, account=request.user)
-            if ride.status not in ['completed', 'canceled']:
+            if ride.status == 'open' and ride.available_seats == ride.total_seats:
+                # 只有在行程状态为 'open' 且可用座位数等于总座位数时(即没有乘客)才能取消
                 ride.status = 'canceled'
                 ride.save()
                 return Response({"detail": "Ride canceled."}, status=status.HTTP_200_OK)
@@ -384,8 +385,8 @@ class ListPendingTripRequestsView(APIView):
     permission_classes = [IsDriver]
 
     def get(self, request):
-        # 只返回状态为 pending 且类型为“打车”的请求
-        requests = TripRequest.objects.filter(status='pending', trip_type='打车').order_by('-request_time')
+        # 只返回状态为 pending 的请求
+        requests = TripRequest.objects.filter(status='pending').order_by('-request_time')
         serializer = TripRequestSerializer(requests, many=True)
         return Response(serializer.data)
 
@@ -397,22 +398,60 @@ class AcceptTripRequestView(APIView):
     def post(self, request, request_id):
         try:
             trip_request = TripRequest.objects.get(id=request_id, status='pending')
-            if trip_request.trip_type != '打车':
-                return Response({"detail": "只能接打车请求"}, status=400)
         except TripRequest.DoesNotExist:
             return Response({"detail": "请求不存在或已处理"}, status=404)
 
         driver = Driver.objects.get(account=request.user)
-        # 创建对应 TripOrder 实例
-        TripOrder.objects.create(
-            trip_request=trip_request,
-            driver=driver,
-        )
 
-        trip_request.status = 'matched'
-        trip_request.save()
+        if trip_request.trip_type == '打车':
+            # 直接创建订单
+            TripOrder.objects.create(
+                trip_request=trip_request,
+                driver=driver,
+                payment_status='pending',
+                start_time=trip_request.scheduled_time or timezone.now()
+            )
+            trip_request.status = 'matched'
+            trip_request.save()
+            return Response({"detail": "已接打车订单"})
 
-        return Response({"detail": "已接单"})
+        elif trip_request.trip_type == '拼车':
+            # 匹配 Ride
+            matched_ride = Ride.objects.filter(
+                account=request.user,
+                start_location=trip_request.pickup_address,
+                end_location=trip_request.dropoff_address,
+                departure_time=trip_request.scheduled_time,
+                status='open'
+            ).first()
+
+            if not matched_ride:
+                return Response({"detail": "无匹配的行程计划"}, status=400)
+
+            if trip_request.seats_needed is None:
+                return Response({"detail": "缺少 seats_needed 信息"}, status=400)
+
+            if trip_request.seats_needed > matched_ride.available_seats:
+                return Response({"detail": "拼车请求剩余座位不足"}, status=400)
+
+            # 成功接单
+            TripOrder.objects.create(
+                trip_request=trip_request,
+                driver=driver,
+                payment_status='pending',
+                start_time=matched_ride.departure_time
+            )
+            trip_request.status = 'matched'
+            trip_request.save()
+
+            matched_ride.available_seats -= trip_request.seats_needed
+            if matched_ride.available_seats == 0:
+                matched_ride.status = 'full'
+            matched_ride.save()
+
+            return Response({"detail": "已接拼车订单"})
+
+        return Response({"detail": "不支持的请求类型"}, status=400)
 
 
 # 查看乘客
