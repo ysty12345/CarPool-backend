@@ -28,7 +28,7 @@ from apps.carpool.views import (
     SubmitTripRequestView, TripRequestStatusView, CancelTripRequestView,
     PassengerOrderHistoryView, SubmitDriverReviewView, PassengerCouponsView, ReceiveCouponView,
     CreateTripView, MyTripsView, AcceptTripRequestView, TripPassengersView, RatePassengerView,
-    CancelRideView, ListPendingTripRequestsView, DriverOrderHistoryView
+    CancelRideView, ListPendingTripRequestsView, DriverOrderHistoryView, ListOpenRidesView
 )
 
 urlpatterns = [
@@ -60,6 +60,7 @@ urlpatterns = [
     path('api/passenger/trip/request/', SubmitTripRequestView.as_view(), name='submit-trip-request'),
     path('api/passenger/trip/status/', TripRequestStatusView.as_view(), name='trip-request-status'),
     path('api/passenger/trip/cancel/<int:pk>/', CancelTripRequestView.as_view(), name='cancel-trip-request'),
+    path('api/passenger/rides/open/', ListOpenRidesView.as_view(), name='open-ride-list'),
     path('api/passenger/orders/', PassengerOrderHistoryView.as_view(), name='passenger-orders'),
     path('api/passenger/review/', SubmitDriverReviewView.as_view(), name='submit-driver-review'),
     path('api/passenger/coupons/', PassengerCouponsView.as_view(), name='passenger-coupons'),

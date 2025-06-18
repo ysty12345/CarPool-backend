@@ -127,6 +127,23 @@ class TripRequestSerializer(serializers.ModelSerializer):
         return data
 
 
+# 乘客查看司机行程序列化器
+class RideListSerializer(serializers.ModelSerializer):
+    driver_phone = serializers.CharField(source='account.phone', read_only=True)
+
+    class Meta:
+        model = Ride
+        fields = [
+            'id',
+            'driver_phone',
+            'start_location',
+            'end_location',
+            'departure_time',
+            'available_seats',
+            'status',
+        ]
+
+
 # 乘客行程订单序列化器
 class TripOrderSerializer(serializers.ModelSerializer):
     class Meta:

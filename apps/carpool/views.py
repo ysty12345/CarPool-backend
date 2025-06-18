@@ -10,7 +10,7 @@ from ext.permissions import IsPassenger, IsDriver, IsAdvertiser
 from .models import Passenger, Driver, Advertiser, TripRequest, TripOrder, UserCoupon, Coupon, Ride
 from .serializers import RegisterSerializer, PassengerSerializer, DriverSerializer, AdvertiserSerializer, \
     IdentityVerificationSerializer, VehicleSerializer, TripRequestSerializer, TripOrderSerializer, ReviewSerializer, \
-    UserCouponSerializer, CouponSerializer, TripSerializer
+    UserCouponSerializer, CouponSerializer, TripSerializer, RideListSerializer
 
 
 # Create your views here.
@@ -278,6 +278,16 @@ class CancelTripRequestView(APIView):
             return Response({'detail': '当前状态不可取消'}, status=status.HTTP_400_BAD_REQUEST)
         except TripRequest.DoesNotExist:
             return Response({'detail': '未找到请求'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# 查看司机行程列表
+class ListOpenRidesView(APIView):
+    permission_classes = [IsPassenger]
+
+    def get(self, request):
+        open_rides = Ride.objects.filter(status='open').order_by('departure_time')
+        serializer = RideListSerializer(open_rides, many=True)
+        return Response(serializer.data)
 
 
 # 查看历史订单
