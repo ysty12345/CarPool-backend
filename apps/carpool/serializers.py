@@ -168,12 +168,19 @@ class ReviewSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         order = data['order']
 
-        if order.passenger != user and order.driver != user:
-            raise serializers.ValidationError("你无权评价这个订单。")
+        # 使用正确的路径来获取乘客和司机的Account对象
+        passenger_account = order.trip_request.account
+        driver_account = order.driver.account
 
+        # 确保当前登录用户是订单的参与者之一
+        if user != passenger_account and user != driver_account:
+            raise serializers.ValidationError("你无权评价这个订单。")
+        
+        # 检查是否重复评价
         if Review.objects.filter(order=order, reviewer=user).exists():
             raise serializers.ValidationError("你已经评价过这个订单了。")
 
+        # 检查是否在评价自己
         if user == data['reviewee']:
             raise serializers.ValidationError("不能评价自己。")
 
@@ -210,7 +217,7 @@ class TripSerializer(serializers.ModelSerializer):
         if data.get('total_seats', -1) <= 0:
             raise serializers.ValidationError({'available_seats': '可用座位数必须大于0'})
         data['status'] = 'open'
-        data.available_seats = data.get('total_seats', 0)
+        data['available_seats'] = data.get('total_seats', 0)
         return data
 
 

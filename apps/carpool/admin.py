@@ -52,13 +52,31 @@ class AdvertiserAdmin(admin.ModelAdmin):
 
 @admin.register(IdentityVerification)
 class IdentityVerificationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'realname', 'idnumber', 'driverlicense', 'created_at')
+    # 1. 在列表页直接显示审核状态
+    list_display = ('id', 'realname', 'idnumber', 'driverlicense', 'status', 'created_at')
+
+    # 2. 允许在右侧栏按状态进行筛选 (方便你快速找到所有 "待审核" 的记录)
+    list_filter = ('status',)
+
+    # 3. 【关键】允许在列表页直接编辑 status 字段
+    list_editable = ('status',)
+
+    # 4. 保留搜索功能
     search_fields = ('realname', 'idnumber', 'driverlicense')
 
 
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'brand', 'model', 'plate_number', 'seats', 'color', 'created_at')
+    # 1. 在列表页直接显示审核状态
+    list_display = ('id', 'plate_number', 'brand', 'model', 'status', 'created_at')
+
+    # 2. 允许在右侧栏按状态进行筛选
+    list_filter = ('status', 'brand')
+
+    # 3. 【关键】允许在列表页直接编辑 status 字段
+    list_editable = ('status',)
+
+    # 4. 保留搜索功能
     search_fields = ('plate_number', 'brand', 'model')
 
 
@@ -89,10 +107,32 @@ class TripRequestAdmin(admin.ModelAdmin):
 
 @admin.register(TripOrder)
 class TripOrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'trip_request', 'driver', 'actual_price', 'payment_status', 'start_time', 'end_time')
+    # --- 【核心修正部分】 ---
+    # 将 list_display 中的 'trip_request' 和 'driver' 替换为我们自定义的方法名
+    list_display = ('id', 'trip_request_info', 'driver_info', 'actual_price', 'payment_status', 'start_time', 'end_time')
+    # ---
+
     list_filter = ('payment_status',)
     search_fields = ('trip_request__account__phone', 'driver__account__phone')
+    
+    # 编辑页面的字段保持不变
+    fields = ('trip_request', 'driver', 'actual_price', 'user_coupon', 'discount_amount', 'payment_status', 'start_time', 'end_time', 'route')
+    
+    # 自定义方法保持不变
+    def trip_request_info(self, obj):
+        # 增加一个try-except以防止关联对象被删除后报错
+        try:
+            return f"请求ID: {obj.trip_request.id} (乘客: {obj.trip_request.account.phone})"
+        except (AttributeError, TypeError):
+            return "N/A"
+    trip_request_info.short_description = '打车请求' # 这是列表页显示的列名
 
+    def driver_info(self, obj):
+        try:
+            return f"司机ID: {obj.driver.id} ({obj.driver.account.phone})"
+        except (AttributeError, TypeError):
+            return "N/A"
+    driver_info.short_description = '接单司机' # 这是列表页显示的列名
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):

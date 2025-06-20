@@ -305,8 +305,9 @@ class SubmitDriverReviewView(APIView):
     permission_classes = [IsPassenger]
 
     def post(self, request):
-        serializer = ReviewSerializer(data=request.data)
+        serializer = ReviewSerializer(data=request.data, context={'request': request}) # 正确的方式
         if serializer.is_valid():
+            # 此处的 reviewer 也可以在序列化器内部自动设置，但现在这样写也没问题
             serializer.save(reviewer=request.user)
             return Response({'detail': '评价已提交'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
