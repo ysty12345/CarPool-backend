@@ -214,10 +214,10 @@ class TripSerializer(serializers.ModelSerializer):
         read_only_fields = ['account', 'status']
 
     def validate(self, data):
-        if data.get('total_seats', -1) <= 0:
+        if data.get('available_seats', -1) <= 0:
             raise serializers.ValidationError({'available_seats': '可用座位数必须大于0'})
         data['status'] = 'open'
-        data['available_seats'] = data.get('total_seats', 0)
+        data['available_seats'] = data.get('available_seats', 0)
         return data
 
 
