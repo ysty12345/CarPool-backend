@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db import transaction
 from django.contrib.auth import authenticate
 
 from ext.permissions import IsPassenger, IsDriver, IsAdvertiser
@@ -288,6 +289,71 @@ class ListOpenRidesView(APIView):
         open_rides = Ride.objects.filter(status='open').order_by('departure_time')
         serializer = RideListSerializer(open_rides, many=True)
         return Response(serializer.data)
+  
+# 加入行程  
+class JoinRideView(APIView):
+    """
+    乘客加入一个开放的拼车行程。
+    如果乘客已加入，则幂等地返回成功。
+    """
+    permission_classes = [IsPassenger]
+
+    def post(self, request, ride_id):
+        try:
+            ride = Ride.objects.get(pk=ride_id)
+        except Ride.DoesNotExist:
+            return Response({"detail": "该行程不存在。"}, status=status.HTTP_404_NOT_FOUND)
+
+        if TripOrder.objects.filter(
+            trip_request__account=request.user,
+            driver__account=ride.account,
+            trip_request__pickup_location=ride.start_location,
+            trip_request__dropoff_location=ride.end_location,
+            start_time=ride.departure_time
+        ).exists():
+            return Response({"detail": "成功加入行程！"}, status=status.HTTP_200_OK)
+
+        with transaction.atomic():
+            ride = Ride.objects.select_for_update().get(pk=ride_id)
+
+            if ride.status != 'open':
+                return Response({"detail": "该行程当前不可加入。"}, status=status.HTTP_400_BAD_REQUEST)
+            if ride.available_seats <= 0:
+                return Response({"detail": "该行程已满员。"}, status=status.HTTP_400_BAD_REQUEST)
+            if ride.account == request.user:
+                return Response({"detail": "您不能加入自己的行程。"}, status=status.HTTP_400_BAD_REQUEST)
+
+            ride.available_seats -= 1
+            if ride.available_seats == 0:
+                ride.status = 'full'
+            ride.save()
+
+            # --- 修正点 ---
+            # 在创建 TripRequest 时，添加 request_time 字段
+            trip_request = TripRequest.objects.create(
+                account=request.user,
+                trip_type='拼车',
+                pickup_location=ride.start_location,
+                dropoff_location=ride.end_location,
+                scheduled_time=ride.departure_time,
+                request_time=timezone.now(),  # <-- 新增此行，记录当前请求时间
+                seats_needed=1,
+                status='matched'
+            )
+            
+            try:
+                driver_profile = Driver.objects.get(account=ride.account)
+            except Driver.DoesNotExist:
+                return Response({"detail": "找不到该行程的司机信息。"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            TripOrder.objects.create(
+                trip_request=trip_request,
+                driver=driver_profile,
+                payment_status='pending',
+                start_time=ride.departure_time
+            )
+
+        return Response({"detail": "成功加入行程！"}, status=status.HTTP_200_OK)
 
 
 # 查看历史订单
